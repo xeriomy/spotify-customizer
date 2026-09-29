@@ -6,13 +6,13 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.stringOption
 import app.spotifycustomizer.patches.shared.Constants.COMPATIBILITY_SPOTIFY
 import app.spotifycustomizer.patches.shared.PackageName.isValidPackageName
-import com.android.tools.smali.dexlib2.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction21t
 
 /**
  * The new package name for the clone.
  *
  * Declared once and shared by the two halves of the clone feature, which have
- * to agree on the value. [CloneAppPatch] owns and exposes the option; this
+ * to agree on the value. [cloneAppPatch] owns and exposes the option; this
  * patch reads the same option back out of it, so a user cannot end up with a
  * manifest and a bytecode patch that disagree about the package name.
  */
@@ -32,11 +32,10 @@ internal val clonePackageName = stringOption(
  * does not recognise. Renaming the package puts the process name on that path,
  * so this rewrites the allowlist entry to the new name.
  *
- * This is a dependency of [cloneAppPatch], so the Morphe app enables it
- * automatically when "Clone app" is selected. It must run *after* that patch,
- * which is what `dependsOn` guarantees, and it takes the package name from that
- * patch's option rather than declaring a second one the user would have to fill
- * in twice.
+ * This depends on [cloneAppPatch], so the Morphe app enables it automatically
+ * when "Clone app" is selected. It runs *after* that patch, which is what the
+ * dependency guarantees, and takes the package name from that patch's option
+ * rather than declaring a second one the user would have to fill in twice.
  */
 @Suppress("unused")
 val cloneAppProcessNamePatch = bytecodePatch(
@@ -55,12 +54,13 @@ val cloneAppProcessNamePatch = bytecodePatch(
                     "\"${cloneAppPatch.name}\" patch."
             )
 
-        // Accessing instructionMatches triggers the match.
+        // Accessing instructionMatches resolves the fingerprint.
         val allowlistEntry = processNameAllowlistFingerprint.instructionMatches[0]
-        val register = allowlistEntry.getInstruction<OneRegisterInstruction>().registerA
+        val register = allowlistEntry.getInstruction<BuilderInstruction21t>().registerA
 
         // `const-string v2, "com.spotify.music"` becomes the new package name.
-        // Only the main-process entry is touched; `.gdbprocess` and
+        //
+        // Only the main-process entry is touched. `.gdbprocess` and
         // `robolectric.ui` keep their values, which is why this replaces the
         // one instruction the first filter matched rather than searching the
         // method for the literal again.
