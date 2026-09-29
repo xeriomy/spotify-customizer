@@ -186,7 +186,7 @@ loudly at patch time is strictly better.
 
 ## 5. Ordered tasks
 
-- [ ] **T0 — Prerequisite: a build path.** Local Gradle is blocked: no
+- [x] **T0 — Prerequisite: a build path.** Local Gradle is blocked: no
       `~/.gradle/gradle.properties`, and the local `gh` token has `repo` +
       `workflow` but **not** `read:packages`, so plugin resolution fails. (Auth
       is now wired: Termux's `gh`/`git` configs were copied into `/root` so
@@ -205,25 +205,25 @@ loudly at patch time is strictly better.
       is *not* used so a real compile failure is visible. The automatic
       `GITHUB_TOKEN` carries `packages: read`, which is what the Morphe registry
       needs.
-- [ ] **T1 — Write `PackageName.kt`.** `ORIGINAL_PACKAGE`, `isValidPackageName`,
-      `rewriteAuthority(value, newPackage)`. Unit-testable pure functions.
-- [ ] **T2 — Write `ChangeAppNamePatch.kt`.** Include the quote-stripping helper.
-- [ ] **T3 — Write `CloneAppPatch.kt`.** Manifest package, `<application>`-scoped
-      provider sweep, `media_provider_authority` rewrite. Assert (throw
-      `PatchException`) that at least one provider authority was actually
-      rewritten, so a future Spotify release that renames them fails loudly
-      instead of shipping a clone that cannot install.
-- [ ] **T4 — Pin the verified version in `Constants.kt`.** Replace the `null`
-      experimental target with `AppTarget("9.1.84.2231", 146291969)`. The
-      two-arg constructor sets `versionCodes` for every `SupportedAbi`, which is
-      what we want for a universal APK. Do not hand-build a `versionCodes` map —
-      the constructor exists for this.
-- [ ] **T5 — Delete the two placeholder files.**
-- [ ] **T6 — Verify compile via the T0 workflow.** Push the branch, watch the
-      `build.yml` run. A local `./gradlew` is not expected to work and its
-      failure is not evidence of a problem in the patch code.
-- [ ] **T7 — Apply and test.** Apply the `.mpp` to the 9.1.84.2231 APK with Morphe
-      Desktop, then verify on device:
+- [x] **T1 — Write `PackageName.kt`.** `ORIGINAL_PACKAGE`, `isValidPackageName`,
+      `rewritePackageDerivedValue(value, newPackage)`. Pure functions.
+      *Also needed* `Dom.kt` with `getAndroidAttribute` / `setAndroidAttribute` —
+      see the namespace note in §9.
+- [x] **T2 — Write `ChangeAppNamePatch.kt`.** Includes the quote-stripping helper.
+- [x] **T3 — Write `CloneAppPatch.kt`.** Manifest package, `<application>`-scoped
+      provider sweep, `media_provider_authority` rewrite. Throws `PatchException`
+      if no provider authority was rewritten, so a future Spotify release that
+      renames them fails loudly instead of shipping a clone that cannot install.
+- [x] **T4 — Pin the verified version in `Constants.kt`.** `AppTarget("9.1.84.2231", 146291969)`.
+- [x] **T5 — Delete the two placeholder files.**
+- [x] **T6 — Verify compile via the T0 workflow.** Run `36640984138`: `Build
+      patches` green, produced `patches-1.0.0.mpp`. Inspected the bundle: both
+      patch classes present with their option keys, no `PlaceholderPatch`
+      class, `xeriomy.x.spotifyx` default and versionCode `146291969` both
+      present in the bytecode.
+- [ ] **T7 — Apply and test.** Download the artifact from run `36640984138`
+      (`patches-1.0.0.mpp`) or rebuild locally once registry auth exists, apply
+      it to the 9.1.84.2231 APK with Morphe Desktop, then verify on device:
       - clone installs while the original is present (the actual acceptance test)
       - both launch, both can sign in
       - share sheet, profile picture, playlist artwork do not crash
@@ -298,7 +298,54 @@ loudly at patch time is strictly better.
   against `Patch.kt` and `Option.kt`. Note the option's first parameter is
   `key`, not `name` as the public docs show.
 - Patcher version drift: the docs and sources read are from `morphe-patcher`
-  `main`, while the build resolves `1.13.0`. If T6's CI run fails on a signature,
-  check the 1.13.0 tag before assuming the patch code is wrong.
+  `main`, while the build resolves `1.13.0`. T6's CI run passed, so the
+  signatures used are correct for `1.13.0`.
 - The clone is signed by the user (Morphe Desktop), not by Spotify, so the two
   apps genuinely coexist.
+
+---
+
+## 9. Notes for future patches
+
+### 9.1 `android:` attributes are not namespace-aware
+
+Morphe parses manifests and resources with
+`DocumentBuilderFactory.newInstance()`, which has `isNamespaceAware() == false`
+by JAXP default. In such a document an `android:authorities` attribute carries
+**no** namespace URI and its node name is the literal string
+`android:authorities`.
+
+Consequences:
+
+- `getAttribute("authorities")` returns `""` — it looks for an unprefixed name.
+- `getAttributeNS(ANDROID_NS, "authorities")` also returns `""`.
+- `getAttribute("android:authorities")` is the one that works.
+- `setAttributeNS(ANDROID_NS, "android:authorities", v)` would **add a second
+  attribute** rather than replace the existing one, producing a manifest with
+  two `authorities` attributes and no obvious error.
+
+The first draft of `CloneAppPatch.kt` had exactly this bug: it read with
+`getAttributeNS` (always empty, so nothing would have been rewritten — caught by
+the `rewrittenAuthorities == 0` assertion) and wrote with `setAttributeNS`
+(which would have duplicated the attribute). Neither failure is loud.
+
+`Dom.kt` now centralises this in `getAndroidAttribute` / `setAndroidAttribute`,
+which try both spellings and write through whichever the document actually
+uses. Any future patch that touches a namespaced attribute should use those
+helpers rather than calling the DOM directly.
+
+### 9.2 Verified against a real APK, not just compiled
+
+Compiling proves the Kotlin is valid; it does not prove the patch does the
+right thing to Spotify. The rewrite logic was replayed against the decoded
+9.1.84.2231 manifest and `strings.xml` before committing:
+
+- 8 provider authorities rewritten, all under `<application>`
+- 3 `<queries>` providers left untouched
+  (`ASAA`, `amzn_appstore`, `androidx.car.app.connection`)
+- `media_provider_authority` rewritten to `<newPackage>.mediaapi`
+
+The string-escaping rule was checked against aapt2's own output: Spotify's
+`strings.xml` contains 728 quote-delimited raw strings, 682 of which contain
+apostrophes and none of which has an unescaped inner double quote. That is
+exactly the rule `escapeAndroidStringResource` implements.
