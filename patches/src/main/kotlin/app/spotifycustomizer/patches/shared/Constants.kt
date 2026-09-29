@@ -7,12 +7,15 @@ object Constants {
     /**
      * Spotify compatibility declaration.
      *
-     * No specific Spotify version is pinned yet. The single `null` target
-     * means "any version" and is marked experimental until the first real
-     * patch is developed and verified against a concrete Spotify release.
+     * Pinned to the release the patches in this collection were developed
+     * against, read from a legally obtained APK:
+     * Spotify 9.1.84.2231, versionCode 146291969, minSdk 24.
      *
-     * When the first real patch lands, add concrete AppTarget versions here
-     * (newest to oldest) instead of guessing.
+     * The two-argument `AppTarget` constructor fills `versionCodes` for every
+     * supported ABI, which is what a universal APK needs. The target is no
+     * longer experimental, so the manager will offer it normally.
+     *
+     * Add newer versions above this one as they are verified; do not guess.
      */
     val COMPATIBILITY_SPOTIFY = Compatibility(
         name = "Spotify",
@@ -20,10 +23,7 @@ object Constants {
         description = "Spotify music client.",
         appIconColor = 0x1ED760,
         targets = listOf(
-            AppTarget(
-                version = null,
-                isExperimental = true
-            )
+            AppTarget("9.1.84.2231", 146291969)
         )
     )
 }

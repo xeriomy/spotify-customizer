@@ -1,0 +1,45 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build patches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v6.0.0
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Cache Gradle
+        uses: burrunan/gradle-cache-action@v3
+
+      - name: Build
+        # GITHUB_TOKEN is the automatic token, which carries packages: read.
+        # That is what lets Gradle resolve app.morphe.patches and
+        # app.morphe:morphe-patcher from the Morphe registry in settings.gradle.kts.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew :patches:buildAndroid --no-daemon
+
+      - name: Upload patches
+        uses: actions/upload-artifact@v4
+        with:
+          name: patches
+          path: patches/build/libs/patches-*.mpp
+          if-no-files-found: error
