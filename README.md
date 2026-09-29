@@ -61,11 +61,19 @@ See the [Morphe documentation](https://github.com/MorpheApp/morphe-documentation
 ## 📁 Where future Spotify patches live
 
 - `patches/src/main/kotlin/app/spotifycustomizer/patches/spotify/` — Spotify patches (one patch per file) + `Fingerprints.kt`.
-- `patches/src/main/kotlin/app/spotifycustomizer/patches/shared/Constants.kt` — `COMPATIBILITY_SPOTIFY` (`com.spotify.music`). Pin concrete `AppTarget` versions there once verified; do not guess versions, class names, or resources.
+- `patches/src/main/kotlin/app/spotifycustomizer/patches/shared/Constants.kt` — `COMPATIBILITY_SPOTIFY` (`com.spotify.music`), pinned to verified app targets. Add newer versions there once verified; do not guess versions, class names, or resources.
+- `patches/src/main/kotlin/app/spotifycustomizer/patches/shared/PackageName.kt` — package-name validation and the rule for rewriting package-derived manifest values.
+- `patches/src/main/kotlin/app/spotifycustomizer/patches/shared/Dom.kt` — DOM helpers. **Read this before touching a namespaced attribute**: Morphe parses documents without namespace awareness, so `android:` attributes must be read and written by their prefixed name.
 - `patches/src/main/kotlin/util/PatchListGenerator.kt` — generates `patches-list.json` (do not edit manually).
-- `extensions/extension/` — optional precompiled DEX (`extensions/extension.mpe`) for complex runtime logic; reference via `extendWith(...)`.
 
-Current state is infrastructure only: a no-op `Placeholder patch` exists to verify the build. No real Spotify modifications are implemented yet.
+Verified against Spotify **9.1.84.2231** (versionCode `146291969`).
+
+## ⚠️ Notes on patching Spotify
+
+- **Provider authorities, custom permissions and the media provider authority are all derived from the package name at runtime.** A clone that renames the package has to move all of them, or the install fails with `INSTALL_FAILED_CONFLICTING_PROVIDER` or `INSTALL_FAILED_DUPLICATE_PERMISSION`.
+- **Spotify aborts on an unrecognised process name.** `AssertionError: The process name ... is not allowed to start`, reached from `EarlyInitializationProvider.onCreate`. Any patch that changes the package name must handle this; `CloneAppPatch` does it via `Clone app process name`.
+- **A process name check is a prefix test, not equality.** Do not rely on that. It is an implementation detail of an obfuscated helper and may be tightened.
+- Patches are only verified against the pinned app target. Check a new Spotify version before assuming a patch still applies.
 
 ## 📜 License
 
