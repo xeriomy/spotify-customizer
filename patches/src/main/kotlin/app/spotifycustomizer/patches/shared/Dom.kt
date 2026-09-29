@@ -119,3 +119,29 @@ fun Element.descendantElements(tagName: String): List<Element> {
     }
     return result
 }
+
+/**
+ * Collects every descendant element, at any depth.
+ *
+ * @return All descendant elements, in document order.
+ */
+fun Element.allDescendantElements(): List<Element> = descendantElementsBy { true }
+
+/**
+ * Collects this element's descendants matching a predicate, at any depth.
+ *
+ * @param predicate Applied to each descendant element.
+ * @return The matching descendant elements, in document order.
+ */
+fun Element.descendantElementsBy(predicate: (Element) -> Boolean): List<Element> {
+    val result = mutableListOf<Element>()
+    val children = childNodes
+    for (i in 0 until children.length) {
+        val child = children.item(i)
+        if (child is Element) {
+            if (predicate(child)) result += child
+            result += child.descendantElementsBy(predicate)
+        }
+    }
+    return result
+}
