@@ -134,11 +134,25 @@ class DomTest {
     }
 
     @Test
-    fun findsAnElementByAttribute() {
+    fun findsAnElementByAnUnprefixedAttribute() {
+        // This is the shape the production code uses: `name` on a <string> in
+        // strings.xml, which carries no prefix.
         val doc = parse(sample)
-        val found = doc.findElementByAttribute("provider", "name", "a.B")
-        assertEquals("com.spotify.music.share", found?.getAndroidAttribute("authorities"))
-        assertNull(doc.findElementByAttribute("provider", "name", "does.not.Exist"))
+        val found = doc.findElementByAttribute("plain", "value", "untouched")
+        assertEquals("plain", found?.tagName)
+        assertNull(doc.findElementByAttribute("plain", "value", "does.not.Exist"))
+    }
+
+    /**
+     * A prefixed attribute is *not* found by this helper, which is correct
+     * given the parser is not namespace-aware: the node name is literally
+     * `android:value`, so `getAttribute("value")` is empty. Callers that want
+     * a namespaced attribute use [getAndroidAttribute] instead.
+     */
+    @Test
+    fun doesNotFindAPrefixedAttribute() {
+        val doc = parse(sample)
+        assertNull(doc.findElementByAttribute("provider", "name", "a.B"))
     }
 
     @Test

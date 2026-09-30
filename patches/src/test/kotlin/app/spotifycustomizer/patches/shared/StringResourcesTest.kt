@@ -52,11 +52,18 @@ class StringResourcesTest {
     }
 
     @Test
-    fun preservesNewlinesAndSpecialXmlCharacters() {
+    fun preservesSpecialXmlCharactersAndTheTextBetweenThem() {
         // XML escaping is the DOM serializer's job, not ours. These characters
-        // must survive untouched here so the serializer can handle them.
+        // must survive untouched so the serializer can handle them; only the
+        // double quotes are removed.
         val input = "A&B <tag> \"q\" 'a'"
-        assertEquals("\"A&B <tag> 'a'\"", StringResources.escape(input))
+        assertEquals("\"A&B <tag> q 'a'\"", StringResources.escape(input))
+    }
+
+    @Test
+    fun preservesNewlines() {
+        // A newline is legal in a raw string and must not be mangled here.
+        assertEquals("\"line1\nline2\"", StringResources.escape("line1\nline2"))
     }
 
     @Test

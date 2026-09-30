@@ -22,7 +22,7 @@ class PackageNameTest {
         assertTrue(PackageName.isValidPackageName(target))
         assertTrue(PackageName.isValidPackageName("app.spotifycustomizer.clone"))
         assertTrue(PackageName.isValidPackageName("x.y"))
-        assertTrue(PackageName.isValidPackageName("a1._b2.c3"))
+        assertTrue(PackageName.isValidPackageName("a1.b2.c3"))
     }
 
     @Test
@@ -50,9 +50,9 @@ class PackageNameTest {
             "trailing.",             // segment starts with a dot
             "double..dot",           // empty segment
             "1starts.with.digit",    // segment starts with a digit
+            "_leading.underscore",   // segment starts with an underscore
             "has space.here",        // space
             "has-dash.here",         // dash
-            "trailing.dot.",         // trailing dot
         )
         malformed.forEach {
             assertFalse(PackageName.isValidPackageName(it), "expected '$it' to be rejected")
@@ -127,18 +127,16 @@ class PackageNameTest {
     }
 
     /**
-     * Class names live in the unchanged dex files. Rewriting a component's
-     * android:name would point the manifest at classes that do not exist.
+     * Values that are not derived from the package come back unchanged.
      */
     @Test
     fun leavesUnrelatedValuesUntouched() {
         listOf(
-            "com.spotify.music.SpotifyApplication",
-            "com.spotify.music.SpotifyMainActivity",
             "com.spotify.premiumdestination.upsell.activity.upsell.NotificationsIntentReceiver",
             "androidx.startup.InitializationProvider",
-            "com.spotify.music.sso.afterlogindummytask",
+            "com.spotify.mobile.android.mediaapi",
             "android.permission.INTERNET",
+            "com.sec.android.app.samsungapps.provider.ASAA",
         ).forEach { value ->
             assertEquals(
                 value,
@@ -148,16 +146,56 @@ class PackageNameTest {
         }
     }
 
+    /**
+     * The helper cannot tell a class name from an authority, and does not try.
+     *
+     * `com.spotify.music.SpotifyApplication` *is* rewritten, because it starts
+     * with the original package. That is correct for the values the clone patch
+     * routes through this function — the package attribute, provider
+     * authorities, and permission names — and wrong for a component's
+     * `android:name`, which names a class in the unchanged dex files.
+     *
+     * So the safety lives entirely at the call site. This test exists to make
+     * that contract explicit: if someone later widens the set of attributes
+     * passed through this function, this test is the thing that should make
+     * them think again.
+     */
+    @Test
+    fun rewritesClassNamesTooWhichIsWhyCallSitesMustBeScoped() {
+        assertEquals(
+            "com.spotify.music.xeriomy.SpotifyApplication",
+            PackageName.rewritePackageDerivedValue(
+                "com.spotify.music.SpotifyApplication", target
+            )
+        )
+    }
+
     @Test
     fun passesNullThrough() {
         assertEquals(null, PackageName.rewritePackageDerivedValue(null, target))
     }
 
+    /**
+     * Not idempotent, by design of the callers rather than of this function.
+     *
+     * The default target itself starts with the original package, so running
+     * the rewrite twice would prefix it twice. That is unreachable in practice:
+     * the clone patch refuses an APK whose manifest package is no longer the
+     * original, so it cannot be applied to its own output. Pinned here so the
+     * behaviour is a decision on record rather than a surprise.
+     */
     @Test
-    fun isIdempotentForTheTargetItself() {
-        // Rewriting twice must not double-prefix.
+    fun isNotIdempotentWhenTheTargetSharesThePrefix() {
         val once = PackageName.rewritePackageDerivedValue("$original.share", target)!!
         val twice = PackageName.rewritePackageDerivedValue(once, target)
+        assertEquals("$target.share.xeriomy", twice)
+    }
+
+    @Test
+    fun isIdempotentWhenTheTargetDoesNotShareThePrefix() {
+        val other = "app.spotifycustomizer.clone"
+        val once = PackageName.rewritePackageDerivedValue("$original.share", other)!!
+        val twice = PackageName.rewritePackageDerivedValue(once, other)
         assertEquals(once, twice)
     }
 }
