@@ -188,7 +188,12 @@ class PackageNameTest {
     fun isNotIdempotentWhenTheTargetSharesThePrefix() {
         val once = PackageName.rewritePackageDerivedValue("$original.share", target)!!
         val twice = PackageName.rewritePackageDerivedValue(once, target)
-        assertEquals("$target.share.xeriomy", twice)
+
+        // Derived rather than hardcoded: the second pass keeps whatever followed
+        // the original package, which is now the first pass's own output.
+        val expected = target + once.removePrefix(original)
+        assertEquals(expected, twice)
+        assertTrue(twice != once, "expected the second pass to change the value")
     }
 
     @Test
