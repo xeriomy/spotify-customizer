@@ -37,6 +37,12 @@ Click here to add these patches to Morphe: https://morphe.software/add-source?gi
 
 <!-- PATCHES_END -->
 
+## 🛠️ Contributing
+
+See [docs/TESTING.md](docs/TESTING.md) for the patch → build → device-test loop,
+how to derive a fingerprint from an APK, and the three failures this collection
+has already hit, so the same ground does not get covered twice.
+
 ## 📜 License
 
 Spotify Customizer Patches are licensed under the [GNU General Public License v3.0](LICENSE). See [NOTICE](NOTICE): do not use the "Morphe" name/branding for this derivative work; references to Morphe are for descriptive compatibility only.
