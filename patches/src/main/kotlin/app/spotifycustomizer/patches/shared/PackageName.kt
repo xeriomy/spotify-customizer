@@ -49,6 +49,19 @@ object PackageName {
      * for other apps, not ours, and rewriting them would break the Samsung,
      * Amazon and Car App integrations for no install benefit.
      *
+     * **This cannot tell a class name from an authority, and does not try.**
+     * `com.spotify.music.SpotifyApplication` is rewritten, because it starts
+     * with the original package. That is right for the three kinds of value
+     * the clone patch routes through here — the `package` attribute, provider
+     * authorities, and permission names — and wrong for a component's
+     * `android:name`, which names a class in the dex files this patch never
+     * touches.
+     *
+     * The safety therefore lives at the call site. Do not widen the set of
+     * attributes passed through this function without checking what they hold.
+     * `rewritesClassNamesTooWhichIsWhyCallSitesMustBeScoped` in
+     * `PackageNameTest` records this.
+     *
      * @param value The current value, e.g. `com.spotify.music.share`.
      * @param newPackage The replacement package name.
      * @return The rewritten value, or [value] itself when it is not derived
