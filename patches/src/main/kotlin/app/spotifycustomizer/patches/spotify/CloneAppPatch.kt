@@ -18,10 +18,20 @@ import org.w3c.dom.Element
 
 /**
  * The new package name for the clone.
+ *
+ * The default reuses the `app.spotifycustomizer` namespace that the patches
+ * module itself lives in, so the whole project identifies as one thing and a
+ * clone is visibly not a Spotify build. It deliberately does *not* sit under
+ * `com.spotify.music`, which belongs to Spotify AB.
+ *
+ * Nothing about the patch depends on the name's shape, only on it differing
+ * from the original so that the rewritten provider authorities and permission
+ * names do not collide with the installed original. The user can change it to
+ * anything valid, and can set a different one per clone.
  */
 private val clonePackageName = stringOption(
     key = "Package name",
-    default = "xeriomy.x.spotifyx",
+    default = "app.spotifycustomizer.clone",
     description = "The new package name. Must be a valid package name.",
     validator = { isValidPackageName(it) }
 )
