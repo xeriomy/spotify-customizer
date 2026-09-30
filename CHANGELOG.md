@@ -1,3 +1,13 @@
+## [1.1.0-dev.1](https://github.com/xeriomy/spotify-customizer/compare/v1.0.0...v1.1.0-dev.1) (2026-09-30)
+
+### 🐛 Bug Fixes
+
+* Use matchEntire, which the patcher's Kotlin stdlib has ([0a5a097](https://github.com/xeriomy/spotify-customizer/commit/0a5a0973423371d98dd272474c3c848f58f84f20))
+
+### ✨ New Features
+
+* Add accent colour patch ([c5a7859](https://github.com/xeriomy/spotify-customizer/commit/c5a785961290ab711b12d272694d04b0bd589fa9)), closes [#1ed760](https://github.com/xeriomy/spotify-customizer/issues/1ed760) [#ff1ed760](https://github.com/xeriomy/spotify-customizer/issues/ff1ed760) [#661ed760](https://github.com/xeriomy/spotify-customizer/issues/661ed760) [#1ed760](https://github.com/xeriomy/spotify-customizer/issues/1ed760) [#661ed760](https://github.com/xeriomy/spotify-customizer/issues/661ed760) [#1ED760](https://github.com/xeriomy/spotify-customizer/issues/1ED760)
+
 ## 1.0.0 (2026-09-30)
 
 ### 🐛 Bug Fixes

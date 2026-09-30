@@ -18,7 +18,7 @@ Click here to add these patches to Morphe: https://morphe.software/add-source?gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.0.0](https://github.com/xeriomy/spotify-customizer/releases/tag/v1.0.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;2 patches total
+> **[v1.1.0-dev.1](https://github.com/xeriomy/spotify-customizer/releases/tag/v1.1.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;2 patches total
 <details open>
 <summary>📦 Spotify&nbsp;&nbsp;•&nbsp;&nbsp;2 patches</summary>
 <br>
@@ -36,6 +36,12 @@ Click here to add these patches to Morphe: https://morphe.software/add-source?gi
 </details>
 
 <!-- PATCHES_END -->
+
+## 🛠️ Contributing
+
+See [docs/TESTING.md](docs/TESTING.md) for the patch → build → device-test loop,
+how to derive a fingerprint from an APK, and the three failures this collection
+has already hit, so the same ground does not get covered twice.
 
 ## 📜 License
 
