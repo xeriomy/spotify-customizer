@@ -18,14 +18,20 @@ Click here to add these patches to Morphe: https://morphe.software/add-source?gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.0.0](https://github.com/xeriomy/spotify-customizer/releases/tag/v1.0.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;1 patches total
+> **[v1.0.0-dev.1](https://github.com/xeriomy/spotify-customizer/releases/tag/v1.0.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;2 patches total
 <details open>
-<summary>📦 Spotify&nbsp;&nbsp;•&nbsp;&nbsp;1 patch</summary>
+<summary>📦 Spotify&nbsp;&nbsp;•&nbsp;&nbsp;2 patches</summary>
 <br>
+
+**🎯 Supported versions:**
+
+| 9.1.84.2231 |
+| :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
-| [Placeholder patch](#placeholder-patch) | Placeholder patch to verify the patch collection builds. Does nothing. |  |
+| [Change app name](#change-app-name) | Changes the name shown under the app icon to a custom name. | • App name |
+| [Clone app](#clone-app) | Changes the package name so the app installs alongside the original. | • Package name |
 
 </details>
 
