@@ -122,9 +122,18 @@ gradle-app.setting
 # Dependency directories
 node_modules/
 
-# gradle properties, due to Github token
-./gradle.properties
+# NOTE: gradle.properties in the repo root IS tracked, and the ignore rule
+# that used to list it here was dead: gitignore does not apply to tracked
+# files, so it protected nothing while implying that a token added there would
+# be safe. It contains no credentials.
+#
+# Registry credentials for the Morphe Maven registry belong in
+# ~/.gradle/gradle.properties (outside this repository) as gpr.user / gpr.key,
+# or in the GITHUB_ACTOR / GITHUB_TOKEN environment variables in CI.
 
 # Ignore IDEA files
 .idea/
 local.properties
+
+# Agent working notes, not project content
+docs/superpowers/

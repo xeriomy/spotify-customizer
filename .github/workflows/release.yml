@@ -2,7 +2,13 @@ name: Release
 
 on:
   workflow_dispatch:
+  # Only the release branches. A bare `push` also fired on feature branches,
+  # where semantic-release cannot publish, so every feature push produced a
+  # red run that proved nothing. Use the Build workflow for compile feedback.
   push:
+    branches:
+      - main
+      - dev
 
 jobs:
   release:
@@ -49,8 +55,9 @@ jobs:
           subject-name: 'Morphe Patches ${{ steps.release.outputs.new_release_git_tag }}'
           subject-path: patches/build/libs/patches-*.mpp
 
-      # Always verify compilation when semantic-release did not publish a release.
-      # This covers non-main/dev branches, chore commits, docs commits, etc.
+      # Compilation is now covered by the Build workflow on every branch, so
+      # this is redundant with it. Kept as a cheap guard on the release
+      # branches, where a publish would otherwise ship an unbuildable bundle.
       - name: Verify project compiles
         if: steps.release.outputs.new_release_published != 'true'
         env:

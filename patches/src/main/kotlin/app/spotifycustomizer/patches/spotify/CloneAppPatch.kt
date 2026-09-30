@@ -1,0 +1,291 @@
+package app.spotifycustomizer.patches.spotify
+
+import app.morphe.patcher.patch.PatchException
+import app.morphe.patcher.patch.resourcePatch
+import app.morphe.patcher.patch.stringOption
+import app.spotifycustomizer.patches.shared.Constants.COMPATIBILITY_SPOTIFY
+import app.spotifycustomizer.patches.shared.PackageName.ORIGINAL_PACKAGE
+import app.spotifycustomizer.patches.shared.PackageName.isValidPackageName
+import app.spotifycustomizer.patches.shared.PackageName.rewritePackageDerivedValue
+import app.spotifycustomizer.patches.shared.allDescendantElements
+import app.spotifycustomizer.patches.shared.descendantElements
+import app.spotifycustomizer.patches.shared.findChildElement
+import app.spotifycustomizer.patches.shared.findElementByAttribute
+import app.spotifycustomizer.patches.shared.getAndroidAttribute
+import app.spotifycustomizer.patches.shared.putAndroidAttribute
+import app.spotifycustomizer.patches.shared.setAndroidAttribute
+import org.w3c.dom.Element
+
+/**
+ * The new package name for the clone.
+ *
+ * Defaulting under `com.spotify.music` is deliberate. Spotify's startup
+ * process check is a *prefix* test rather than an equality test, so a package
+ * that starts with the original is accepted by that check on its own. That
+ * matters for two reasons:
+ *
+ *  - it is a second line of defence behind the `android:process` override in
+ *    the patch body, and the two agree, so relaxing or removing either one
+ *    does not immediately break startup;
+ *  - it is why the default is `com.spotify.music.xeriomy` and not
+ *    `com.spotify.xeriomy`, which does not share the prefix and would rely on
+ *    the manifest override alone.
+ *
+ * Note that this namespace belongs to Spotify AB. The default is a convenience
+ * for identifying a clone, not a claim of ownership, and users can set any
+ * valid name — including one of their own — since nothing in the patch depends
+ * on the name's shape.
+ */
+private val clonePackageName = stringOption(
+    key = "Package name",
+    default = "com.spotify.music.xeriomy",
+    description = "The new package name. Must be a valid package name.",
+    validator = { isValidPackageName(it) }
+)
+
+/**
+ * The string resource holding the media provider's authority.
+ *
+ * Unlike the other providers, `MediaProvider` does not declare its authority
+ * literally in the manifest — it references this resource. The manifest
+ * attribute is therefore left alone and the resource *value* is rewritten
+ * instead, which is what the running app actually reads.
+ */
+private const val MEDIA_AUTHORITY_RESOURCE = "media_provider_authority"
+
+/** The value that resource holds in unpatched Spotify 9.1.84.2231. */
+private const val ORIGINAL_MEDIA_AUTHORITY = "com.spotify.mobile.android.mediaapi"
+
+/**
+ * The process name the app runs under.
+ *
+ * An app's process name is its package name unless the manifest overrides it,
+ * so a renamed package has to name the process back to this or Spotify aborts
+ * on startup. Two installed apps may share a process name; processes are keyed
+ * by name and uid.
+ */
+private const val ORIGINAL_PROCESS_NAME = "com.spotify.music"
+
+/**
+ * Manifest elements whose `android:name` attribute holds a *permission* name
+ * rather than a class name.
+ *
+ * This distinction is load-bearing. `android:name` on an `<activity>`,
+ * `<service>` or `<receiver>` is a class name such as
+ * `com.spotify.music.SpotifyApplication`; rewriting those to the new package
+ * would point the manifest at classes that do not exist in the unchanged dex
+ * files, and the app would fail to launch. On `<permission>` and
+ * `<uses-permission>` the same attribute names a permission instead, and that
+ * *must* be renamed.
+ */
+private val PERMISSION_NAME_ELEMENTS = setOf("permission", "uses-permission")
+
+/**
+ * Attributes that always hold a permission name, on any element.
+ *
+ * `android:permission` guards a component; it is never a class name.
+ */
+private const val PERMISSION_GUARD_ATTRIBUTE = "permission"
+
+/**
+ * Makes the app installable alongside the original Spotify.
+ *
+ * Renames the package, which is what Android treats as an app's identity, so
+ * the patched APK is a distinct app rather than an update of the original.
+ *
+ * Four groups of values have to move together. Two installed apps may not share
+ * a provider authority, nor may they both *define* the same permission, so
+ * leaving any of these behind makes the install fail:
+ *
+ *  1. the manifest `package` attribute,
+ *  2. the eight provider authorities declared under `<application>`,
+ *  3. the four custom permission names, and every reference to them,
+ *  4. the `media_provider_authority` string resource.
+ *
+ * Spotify builds its provider authorities and one of its permission names at
+ * runtime from `getPackageName()` plus a suffix, so it derives the new values
+ * itself once the manifest is renamed. No bytecode is needed for any of this.
+ *
+ * Permissions: `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` is generated by
+ * AndroidX `ContextCompat` as `getPackageName() + "." + name`, so the app looks
+ * it up under the new package at runtime and the declaration must follow. The
+ * other three (`C2D_MESSAGE`, `INTERNAL_BROADCAST`, `SECURED_BROADCAST`) are
+ * `protectionLevel="signature"`, declared and requested only by this app;
+ * rewriting all three occurrences together keeps the component able to accept
+ * its own broadcasts.
+ *
+ * One thing this patch cannot do: Spotify aborts on a process name it does not
+ * recognise, and a renamed package is exactly that. See step 2, which handles
+ * it from the manifest rather than by patching the allowlist.
+ */
+@Suppress("unused")
+val cloneAppPatch = resourcePatch(
+    name = "Clone app",
+    description = "Changes the package name so the app installs alongside the original.",
+    default = false
+) {
+    compatibleWith(COMPATIBILITY_SPOTIFY)
+
+    // Registers the option with this patch.
+    clonePackageName()
+
+    execute {
+        val target = requireNotNull(clonePackageName.value) {
+            "The '${clonePackageName.name}' option was not set."
+        }
+
+        // The option validator already rejects these, but a patch that trusts
+        // only the UI would still produce an un-installable APK if the option
+        // were ever set programmatically.
+        if (!isValidPackageName(target)) {
+            throw PatchException(
+                "\"$target\" is not a usable package name. It needs at least two dot-separated " +
+                    "segments, each starting with a letter, and it must not be the original " +
+                    "package name ($ORIGINAL_PACKAGE)."
+            )
+        }
+
+        document("AndroidManifest.xml").use { manifest ->
+            val root = manifest.documentElement
+                ?: throw PatchException("AndroidManifest.xml has no root <manifest> element.")
+
+            val declaredPackage = root.getAttribute("package")
+            if (declaredPackage != ORIGINAL_PACKAGE) {
+                throw PatchException(
+                    "Expected the manifest package to be $ORIGINAL_PACKAGE but found " +
+                        "\"$declaredPackage\". This patch only targets unpatched Spotify APKs."
+                )
+            }
+
+            // 1. The app id itself.
+            root.setAttribute("package", target)
+
+            val application = root.findChildElement("application")
+                ?: throw PatchException("AndroidManifest.xml has no <application> element.")
+
+            // 2. Keep the process name Spotify expects.
+            //
+            //    An app's process name is its package name unless the manifest
+            //    says otherwise, and Spotify refuses to start in a process it
+            //    does not recognise: `AssertionError: The process name ... is
+            //    not allowed to start`, thrown from
+            //    EarlyInitializationProvider.onCreate before any UI appears.
+            //    Naming the main process back to the original satisfies it.
+            //
+            //    This is not a cosmetic lie about identity. Two installed apps
+            //    may share a process name, because processes are keyed by
+            //    name *and* uid, so the clone and the original coexist as
+            //    separate processes. getPackageName() still returns the new
+            //    package, which is what steps 3 to 5 depend on.
+            application.putAndroidAttribute("process", ORIGINAL_PROCESS_NAME)
+
+            // 3. Provider authorities, scoped to <application>. The <queries>
+            //    providers describe other apps and must not be rewritten.
+            var rewrittenAuthorities = 0
+            application.descendantElements("provider").forEach { provider ->
+                val currentAuthority = provider.getAndroidAttribute("authorities")
+                    ?: return@forEach
+
+                val rewritten = rewritePackageDerivedValue(currentAuthority, target)
+                if (rewritten != null && rewritten != currentAuthority) {
+                    provider.setAndroidAttribute("authorities", rewritten)
+                    rewrittenAuthorities++
+                }
+            }
+
+            if (rewrittenAuthorities == 0) {
+                throw PatchException(
+                    "No provider authority was rewritten. Spotify 9.1.84.2231 declares eight " +
+                        "authorities derived from $ORIGINAL_PACKAGE; finding none means the app " +
+                        "has changed and the clone would collide with the original on install."
+                )
+            }
+
+            // 4. Custom permissions.
+            //
+            //    Two installed apps may not both *define* the same permission,
+            //    so leaving these as they are makes the install fail outright
+            //    with INSTALL_FAILED_DUPLICATE_PERMISSION. Spotify declares
+            //    four: DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION, and three
+            //    under .permission. (C2D_MESSAGE, INTERNAL_BROADCAST,
+            //    SECURED_BROADCAST).
+            //
+            //    Renaming only the declarations would break the app in a
+            //    subtler way, so the three places each name appears are
+            //    rewritten together:
+            //
+            //      - <permission android:name>       the declaration
+            //      - <uses-permission android:name>  the self-request
+            //      - android:permission on a component  the guard
+            //
+            //    The guard and the self-request must keep matching the new
+            //    declaration or the component stops accepting its own
+            //    broadcasts.
+            var renamedPermissions = 0
+
+            root.descendantElements("permission").forEach { element ->
+                renamePermissionName(element, target)?.let { renamedPermissions++ }
+            }
+            root.descendantElements("uses-permission").forEach { element ->
+                renamePermissionName(element, target)
+            }
+            root.allDescendantElements().forEach { element ->
+                val guard = element.getAndroidAttribute(PERMISSION_GUARD_ATTRIBUTE)
+                    ?: return@forEach
+                val renamed = rewritePackageDerivedValue(guard, target)
+                if (renamed != null && renamed != guard) {
+                    element.setAndroidAttribute(PERMISSION_GUARD_ATTRIBUTE, renamed)
+                }
+            }
+
+            if (renamedPermissions == 0) {
+                throw PatchException(
+                    "No custom permission declaration was renamed. Spotify 9.1.84.2231 " +
+                        "declares four, all named after $ORIGINAL_PACKAGE; finding none means " +
+                        "the app has changed and the clone would fail to install with " +
+                        "INSTALL_FAILED_DUPLICATE_PERMISSION."
+                )
+            }
+        }
+
+        // 3. The media provider's authority lives in a string resource.
+        document("res/values/strings.xml").use { document ->
+            val authorityElement = document.findElementByAttribute(
+                tagName = "string",
+                attributeName = "name",
+                attributeValue = MEDIA_AUTHORITY_RESOURCE
+            ) ?: throw PatchException(
+                "Could not find the '$MEDIA_AUTHORITY_RESOURCE' string resource. The media " +
+                    "provider's authority would collide with the original app on install."
+            )
+
+            if (authorityElement.textContent == ORIGINAL_MEDIA_AUTHORITY) {
+                authorityElement.textContent = "$target.mediaapi"
+            }
+        }
+    }
+}
+
+/**
+ * Renames the `android:name` of a `<permission>` or `<uses-permission>` element
+ * when it refers to a permission owned by the original package.
+ *
+ * Only those two elements are eligible. On an `<activity>`, `<service>`,
+ * `<receiver>` or `<provider>`, `android:name` is a class name from the
+ * unchanged dex files, and rewriting it would leave the manifest pointing at
+ * classes that no longer exist under that name.
+ *
+ * @param element A `<permission>` or `<uses-permission>` element.
+ * @param newPackage The replacement package name.
+ * @return The new permission name, or null when the element was not renamed.
+ */
+private fun renamePermissionName(element: Element, newPackage: String): String? {
+    if (element.tagName !in PERMISSION_NAME_ELEMENTS) return null
+
+    val currentName = element.getAndroidAttribute("name") ?: return null
+    val renamed = rewritePackageDerivedValue(currentName, newPackage)
+    if (renamed == null || renamed == currentName) return null
+
+    element.setAndroidAttribute("name", renamed)
+    return renamed
+}
