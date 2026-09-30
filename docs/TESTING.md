@@ -108,3 +108,43 @@ to rewrite the allowlist literal, and its `dependsOn` edge produced a
 declarations in different files referenced each other, and each file's static
 initialiser assigns its property last, so one read the other as `null`. The
 manifest route removed the second patch entirely.
+
+## Removed: accent colour patch
+
+An accent colour patch was written, verified textually against the APK, and
+then removed because it broke the app on device. Kept here so the next attempt
+starts from what was measured rather than from scratch.
+
+**What it did.** Replaced the brand green `1ed760` in `res/values/colors.xml`
+and `res/drawable*` — 24 files, 65 occurrences — with a user-supplied hex,
+replacing only the six RGB characters so each value kept its own alpha. Scoped
+that way specifically to avoid `res/values/strings.xml`, which holds `#1ED760`
+inside an HTML `<font color=...>` in Spotify's legal notice.
+
+**What went wrong.** The patched app installed, launched, and reported the patch
+as succeeded, but music did not play. No exception, no failure in the patcher
+log.
+
+**The cause is not established.** Do not assume it was the colour values, the
+drawable count, the alpha handling, or a resource-rebuild problem — none of
+those was confirmed, and the distinction matters, because they lead to
+completely different fixes.
+
+What is worth carrying forward:
+
+- The brand green really does appear in 65 places across 24 files, not just in
+  `colors.xml`. Recolouring a subset of them cannot look right, so any future
+  themes patch has to decide the whole surface deliberately.
+- Some of those names are semantic, not decorative:
+  `dark_base_essential_positive`, `*_positive_background_base`,
+  `premiumstandard_background_base`, `premiumexperimental_background_base`.
+  Recolouring a role that code branches on is a plausible suspect for a
+  behavioural change, and it is the first thing to check.
+- A patch that reports success has only proven it found what it looked for. A
+  device test is a separate gate, and this one is the reason `filesChanged == 0`
+  alone is not sufficient evidence that a patch is safe.
+
+The free-text hex validation also accepted near-black and near-white, which
+would be a poor accent regardless of the breakage. If the themes work resumes,
+a curated palette or a contrast check is the better default.
+
