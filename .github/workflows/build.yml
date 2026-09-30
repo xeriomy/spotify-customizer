@@ -43,7 +43,7 @@ jobs:
         # app.morphe:morphe-patcher from the Morphe registry in settings.gradle.kts.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew :patches:buildAndroid --no-daemon
+        run: ./gradlew :patches:test :patches:buildAndroid --no-daemon
 
       - name: Upload patches
         uses: actions/upload-artifact@v4
