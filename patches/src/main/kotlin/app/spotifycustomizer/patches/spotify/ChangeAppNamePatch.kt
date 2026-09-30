@@ -4,6 +4,7 @@ import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.patch.stringOption
 import app.spotifycustomizer.patches.shared.Constants.COMPATIBILITY_SPOTIFY
+import app.spotifycustomizer.patches.shared.StringResources
 import app.spotifycustomizer.patches.shared.findElementByAttribute
 
 /**
@@ -48,24 +49,7 @@ val changeAppNamePatch = resourcePatch(
                     "Spotify has likely renamed it; this patch needs updating for the new app version."
             )
 
-            appNameElement.textContent = escapeAndroidStringResource(appName)
+            appNameElement.textContent = StringResources.escape(appName)
         }
     }
 }
-
-/**
- * Escapes a value for use as the text of a `<string>` resource.
- *
- * The value is wrapped in literal double quotes, which makes it a *raw* string
- * in Android resource terms: an apostrophe in the user's input is then valid
- * without escaping. A raw string may not contain an unescaped double quote, so
- * those are stripped.
- *
- * Assigning to `textContent` and letting the serializer handle XML escaping is
- * deliberate — the XML is never assembled by hand here.
- *
- * @param value The raw user-supplied name.
- * @return A value safe to assign to a `<string>` element's text.
- */
-private fun escapeAndroidStringResource(value: String): String =
-    "\"" + value.replace("\"", "") + "\""
