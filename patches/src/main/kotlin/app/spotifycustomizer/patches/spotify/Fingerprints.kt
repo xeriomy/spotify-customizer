@@ -1,54 +1,26 @@
 package app.spotifycustomizer.patches.spotify
 
-import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.methodCall
-import app.morphe.patcher.string
-
-/**
- * Matches the method that classifies which kind of process the app runs in.
- *
- * Spotify refuses to start in a process whose name it does not recognise. The
- * method reads the current process name and compares it against a three-entry
- * allowlist — the original package name, `<package>.gdbprocess`, and
- * `robolectric.ui` — throwing
- * `AssertionError("The process name ... is not allowed to start")` when none
- * match. It is reached from `EarlyInitializationProvider.onCreate`, so the app
- * dies before any UI appears.
- *
- * `cloneAppProcessNamePatch` rewrites the package-derived literal to the new
- * name, so the renamed process is accepted.
- *
- * Only the return type and string constants are matched. The declaring class is
- * obfuscated (`p.x35` in 9.1.84.2231) and renames between releases, whereas
- * these strings are part of the app's behaviour and do not. The assertion text
- * occurs exactly once across all 18 dex files, which is what makes the match
- * unambiguous.
- *
- * The filters are declared in the order the instructions appear in the method,
- * which the patcher requires: the package literal, then the process-name read,
- * then the other two allowlist entries, then the failure message.
- *
- * Verified against Spotify 9.1.84.2231 (versionCode 146291969).
- */
-internal val processNameAllowlistFingerprint = Fingerprint(
-    returnType = "Lp/zhr0;",
-    filters = listOf(
-        // The allowlist entry for the main process. This is the literal the
-        // clone patch replaces, and it is the first filter so its match is
-        // `instructionMatches[0]`.
-        string("com.spotify.music"),
-        // Reads the process name at runtime via the public API.
-        methodCall(
-            definingClass = "Landroid/app/Application;",
-            name = "getProcessName",
-            returnType = "Ljava/lang/String;"
-        ),
-        // The second allowlist entry.
-        string(".gdbprocess"),
-        // The third, only ever reached under Robolectric.
-        string("robolectric.ui"),
-        // The failure message. Unique in the APK.
-        string("The process name "),
-        string(" is not allowed to start"),
-    )
-)
+// No fingerprints. Neither patch modifies bytecode, and a patch that does not
+// have one is stronger for it: nothing to break when Spotify is obfuscated
+// differently next release.
+//
+// This file is not dead weight, though. Spotify does have checks that a future
+// patch may need to reach, and the notable one is in `p.x35.L()` in
+// classes3.dex of 9.1.84.2231: it reads the process name via
+// `Application.getProcessName()` and throws
+// `AssertionError("The process name ... is not allowed to start")` unless it
+// is `com.spotify.music`, `<package>.gdbprocess` or `robolectric.ui`.
+//
+// The clone patch sidesteps that from the manifest instead of patching the
+// allowlist: see `android:process` in `CloneAppPatch`. Fingerprinting it would
+// work, and the string constants are stable enough to match on, but it would
+// cost a second patch (a patch has exactly one type, and the manifest work
+// needs a resource patch) and therefore a second entry in the user's list.
+//
+// If a future change does need to reach it, match on the return type plus the
+// six string constants in `p.x35.L()`, declared in the order they appear in the
+// method. The assertion text occurs exactly once across all 18 dex files.
+//
+// Do not guess class names, method names, strings or opcodes here. Every
+// fingerprint must be derived from a legally obtained Spotify APK using jadx or
+// Morphe tooling, and must record the app version it was verified against.

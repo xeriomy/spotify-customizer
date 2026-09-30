@@ -62,6 +62,29 @@ fun Element.setAndroidAttribute(name: String, value: String) {
 }
 
 /**
+ * Writes a namespaced `android:` attribute, adding it when the element does not
+ * already declare it.
+ *
+ * The counterpart to [setAndroidAttribute], which only replaces. Use this when
+ * the attribute is expected to be absent in the unpatched app, such as
+ * `android:process` on `<application>`.
+ *
+ * @param name The local attribute name, e.g. `process`.
+ * @param value The value to set.
+ */
+fun Element.putAndroidAttribute(name: String, value: String) {
+    if (hasAttribute("android:$name") || hasAttributeNS(ANDROID_NS, name)) {
+        setAndroidAttribute(name, value)
+    } else {
+        // Created with the literal prefixed name, which is how the parser
+        // already stores every other `android:` attribute in this document.
+        // Using setAttributeNS here would give the new attribute a namespace
+        // URI that its siblings do not have.
+        setAttribute("android:$name", value)
+    }
+}
+
+/**
  * Finds a descendant element by tag name and attribute value.
  *
  * @param tagName The element tag to match, e.g. `string`.

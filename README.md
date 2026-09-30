@@ -71,9 +71,8 @@ Verified against Spotify **9.1.84.2231** (versionCode `146291969`).
 ## ⚠️ Notes on patching Spotify
 
 - **Provider authorities, custom permissions and the media provider authority are all derived from the package name at runtime.** A clone that renames the package has to move all of them, or the install fails with `INSTALL_FAILED_CONFLICTING_PROVIDER` or `INSTALL_FAILED_DUPLICATE_PERMISSION`.
-- **Spotify aborts on an unrecognised process name.** `AssertionError: The process name ... is not allowed to start`, reached from `EarlyInitializationProvider.onCreate`. Any patch that changes the package name must handle this; `CloneAppPatch` does it via `Clone app process name`.
-- **A process name check is a prefix test, not equality.** Do not rely on that. It is an implementation detail of an obfuscated helper and may be tightened.
-- Patches are only verified against the pinned app target. Check a new Spotify version before assuming a patch still applies.
+- **Spotify aborts on an unrecognised process name.** `AssertionError: The process name ... is not allowed to start`, from `EarlyInitializationProvider.onCreate`. An app's process name is its package name unless the manifest overrides it, so `Clone app` also sets `android:process` on `<application>`. Two installed apps may share a process name — processes are keyed by name *and* uid — so the clone and the original coexist.
+- **Patches are only verified against the pinned app target.** Check a new Spotify version before assuming a patch still applies.
 
 ## 📜 License
 
