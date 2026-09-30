@@ -5,7 +5,7 @@ import kotlin.test.assertTrue
 
 class ProbeTest {
     @Test
-    fun probe() {
-        assertTrue(true)
+    fun deliberatelyFails() {
+        assertTrue(false, "proving the test harness gates the build")
     }
 }
