@@ -19,19 +19,26 @@ import org.w3c.dom.Element
 /**
  * The new package name for the clone.
  *
- * The default reuses the `app.spotifycustomizer` namespace that the patches
- * module itself lives in, so the whole project identifies as one thing and a
- * clone is visibly not a Spotify build. It deliberately does *not* sit under
- * `com.spotify.music`, which belongs to Spotify AB.
+ * Defaulting under `com.spotify.music` is deliberate. Spotify's startup
+ * process check is a *prefix* test rather than an equality test, so a package
+ * that starts with the original is accepted by that check on its own. That
+ * matters for two reasons:
  *
- * Nothing about the patch depends on the name's shape, only on it differing
- * from the original so that the rewritten provider authorities and permission
- * names do not collide with the installed original. The user can change it to
- * anything valid, and can set a different one per clone.
+ *  - it is a second line of defence behind the `android:process` override in
+ *    the patch body, and the two agree, so relaxing or removing either one
+ *    does not immediately break startup;
+ *  - it is why the default is `com.spotify.music.xeriomy` and not
+ *    `com.spotify.xeriomy`, which does not share the prefix and would rely on
+ *    the manifest override alone.
+ *
+ * Note that this namespace belongs to Spotify AB. The default is a convenience
+ * for identifying a clone, not a claim of ownership, and users can set any
+ * valid name — including one of their own — since nothing in the patch depends
+ * on the name's shape.
  */
 private val clonePackageName = stringOption(
     key = "Package name",
-    default = "app.spotifycustomizer.clone",
+    default = "com.spotify.music.xeriomy",
     description = "The new package name. Must be a valid package name.",
     validator = { isValidPackageName(it) }
 )
