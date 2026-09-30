@@ -1,10 +1,10 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "1.0.0",
+  "version": "1.0.0-dev.1",
   "patches": [
     {
-      "name": "Placeholder patch",
-      "description": "Placeholder patch to verify the patch collection builds. Does nothing.",
+      "name": "Change app name",
+      "description": "Changes the name shown under the app icon to a custom name.",
       "default": false,
       "category": null,
       "dependencies": [],
@@ -18,16 +18,73 @@
           "signatures": null,
           "targets": [
             {
-              "version": null,
-              "versionCodes": null,
-              "isExperimental": true,
+              "version": "9.1.84.2231",
+              "versionCodes": {
+                "ARM64_V8A": 146291969,
+                "ARMEABI_V7A": 146291969,
+                "X86_64": 146291969,
+                "X86": 146291969
+              },
+              "isExperimental": false,
               "minSdk": null,
               "description": null
             }
           ]
         }
       ],
-      "options": []
+      "options": [
+        {
+          "key": "App name",
+          "title": null,
+          "description": "The name shown under the app icon. Any text.",
+          "required": false,
+          "type": "kotlin.String",
+          "default": "Spotify",
+          "values": null
+        }
+      ]
+    },
+    {
+      "name": "Clone app",
+      "description": "Changes the package name so the app installs alongside the original.",
+      "default": false,
+      "category": null,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "com.spotify.music",
+          "name": "Spotify",
+          "description": "Spotify music client.",
+          "apkFileType": null,
+          "appIconColor": "#1ED760",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "9.1.84.2231",
+              "versionCodes": {
+                "ARM64_V8A": 146291969,
+                "ARMEABI_V7A": 146291969,
+                "X86_64": 146291969,
+                "X86": 146291969
+              },
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": [
+        {
+          "key": "Package name",
+          "title": null,
+          "description": "The new package name. Must be a valid package name.",
+          "required": false,
+          "type": "kotlin.String",
+          "default": "com.spotify.music.xeriomy",
+          "values": null
+        }
+      ]
     }
   ]
 }
