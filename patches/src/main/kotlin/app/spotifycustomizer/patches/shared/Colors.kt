@@ -54,8 +54,9 @@ object Colors {
      * @return The normalised colour, or null when [value] is not a hex colour.
      */
     fun normalise(value: String?): String? {
-        val match = HEX_COLOR.matchEntries(value?.trim() ?: return null).firstOrNull()
-            ?: return null
+        // matchEntire rather than matchEntries: the patcher's Kotlin stdlib
+        // predates matchEntries, and HEX_COLOR is anchored anyway.
+        val match = HEX_COLOR.matchEntire(value?.trim() ?: return null) ?: return null
 
         val digits = match.groupValues[1]
         val rgb = if (digits.length == 8) digits.substring(2) else digits
